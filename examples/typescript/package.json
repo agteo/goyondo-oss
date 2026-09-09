@@ -1,0 +1,6 @@
+{
+  "name": "goyondo-agent-examples-typescript",
+  "private": true,
+  "type": "module",
+  "description": "Optional helper so you can run npx tsx quickstart.ts from this folder."
+}
