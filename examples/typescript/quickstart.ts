@@ -1,6 +1,14 @@
 /**
  * Device auth (if needed) → list_trips. Optional: --create
  * Run from repo root: npx --yes tsx examples/typescript/quickstart.ts
+ *
+ * Pitfalls this flow demonstrates (see PITFALLS.md):
+ * - Do not scrape /connect — POST /api/agent-auth/device first; the user opens verification_uri_complete.
+ * - authorization_pending is normal while polling for the token.
+ * - access_token is a one-time reveal — persist it (e.g. GOYONDO_API_KEY).
+ * - list_trips with empty data is success.
+ * - Task payloads use flat `arguments` (not nested under body).
+ * - --create uses skip_ai_generation so the example does not bill an AI itinerary.
  */
 import { readFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -38,7 +46,7 @@ async function requestToken(): Promise<string> {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      agent_name: "goyondo-agent-examples",
+      agent_name: "goyondo-oss",
       requested_scopes: ["trips:read", "trips:write"],
     }),
   });
@@ -57,6 +65,7 @@ async function requestToken(): Promise<string> {
       return body.access_token;
     }
     if (body.error === "authorization_pending") {
+      // Not a failure — keep polling.
       await new Promise((r) => setTimeout(r, intervalMs));
       continue;
     }
@@ -80,6 +89,7 @@ async function task(token: string, payload: unknown) {
 
 const token = process.env.GOYONDO_API_KEY?.trim() || (await requestToken());
 console.log("=== list_trips ===");
+// Empty data array is a valid success (new account with no trips).
 await task(token, { capability: "list_trips", arguments: {} });
 if (CREATE) {
   console.log("=== create_trip (skip_ai_generation) ===");

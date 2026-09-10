@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
-"""Device auth (if needed) → list_trips. Optional: --create"""
+"""Device auth (if needed) → list_trips. Optional: --create
+
+Pitfalls this flow demonstrates (see PITFALLS.md):
+- Do not scrape /connect — POST /api/agent-auth/device first; the user opens verification_uri_complete.
+- authorization_pending is normal while polling for the token.
+- access_token is a one-time reveal — persist it (e.g. GOYONDO_API_KEY).
+- list_trips with empty data is success.
+- Task payloads use flat `arguments` (not nested under body).
+- --create uses skip_ai_generation so the example does not bill an AI itinerary.
+"""
 from __future__ import annotations
 
 import json
@@ -29,7 +38,7 @@ def request_token() -> str:
     device = requests.post(
         f"{BASE}/api/agent-auth/device",
         json={
-            "agent_name": "goyondo-agent-examples",
+            "agent_name": "goyondo-oss",
             "requested_scopes": ["trips:read", "trips:write"],
         },
         timeout=30,
@@ -47,6 +56,7 @@ def request_token() -> str:
             print("Store this token now (one-time reveal). Example: GOYONDO_API_KEY in .env")
             return body["access_token"]
         if body.get("error") == "authorization_pending":
+            # Not a failure — keep polling.
             time.sleep(interval)
             continue
         raise SystemExit(f"Token poll failed ({res.status_code}): {body}")
@@ -68,6 +78,7 @@ def task(token: str, payload: dict) -> dict:
 def main() -> None:
     token = TOKEN or request_token()
     print("=== list_trips ===")
+    # Empty data array is a valid success (new account with no trips).
     task(token, {"capability": "list_trips", "arguments": {}})
     if CREATE:
         print("=== create_trip (skip_ai_generation) ===")

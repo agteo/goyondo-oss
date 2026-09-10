@@ -21,7 +21,7 @@ request_token() {
   local scopes='["trips:read","trips:write"]'
   DEVICE=$(curl -sS -X POST "$BASE/api/agent-auth/device" \
     -H 'Content-Type: application/json' \
-    -d "{\"agent_name\":\"goyondo-agent-examples\",\"requested_scopes\":$scopes}")
+    -d "{\"agent_name\":\"goyondo-oss\",\"requested_scopes\":$scopes}")
   echo "$DEVICE" | jq '{user_code, verification_uri_complete, expires_in, interval}'
   local device_code interval
   DEVICE_CODE=$(echo "$DEVICE" | jq -r .device_code)

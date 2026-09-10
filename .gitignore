@@ -3,3 +3,6 @@ node_modules/
 .DS_Store
 __pycache__/
 *.pyc
+
+# Local product specs — not published with the OSS teaching repo
+docs/plans/
