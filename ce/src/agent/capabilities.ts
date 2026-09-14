@@ -107,4 +107,42 @@ export const CAPABILITIES = [
   },
 ] as const;
 
-export const HOSTED_ALIAS_NAMES = ["list_trips", "create_trip", "ingest_confirmation"];
+export const EDITION = "community";
+
+// Hosted goyondo.run capabilities an agent may send here by mistake. `list_trips` is shared.
+export const HOSTED_ONLY_CAPABILITIES: Record<string, string> = {
+  create_trip: "Create trips in the CE UI (POST /api/ui/trips).",
+  get_trip: "Use get_day with trip_id and day_id.",
+  add_activity: "Use create_event.",
+  update_activity: "Use move_event or cancel_event.",
+  delete_activity: "Use cancel_event.",
+  regenerate_itinerary: "Not available. Create events directly.",
+  ingest_confirmation: "Use attach_document, then propose_from_documents and confirm_proposal.",
+  list_itinerary_segments: "Not available. Use get_day.",
+  update_day_notes: "Not available.",
+};
+
+// Hosted argument names that mean the agent is using goyondo.run docs against CE.
+export const HOSTED_ARGUMENTS: Record<string, string> = {
+  itinerary_id: "day_id",
+  activity_id: "event_id",
+  activity_type: "kind",
+  skip_ai_generation: "(not applicable)",
+};
+
+export const AGENT_CARD = {
+  name: "Goyondo Community Edition",
+  edition: EDITION,
+  hosted: false,
+  description:
+    "Self-hosted travel harness. Not goyondo.run: capability names, argument names, and tokens differ.",
+  token_prefix: "gce_",
+  capability_registry_url: "/api/agent/capabilities",
+  schema_url: "/api/agent/schema",
+  task_url: "/api/agent/task",
+  hosted_goyondo: {
+    url: "https://goyondo.run",
+    card_url: "https://goyondo.run/api/agent/card",
+    token_prefix: "gyd_",
+  },
+} as const;

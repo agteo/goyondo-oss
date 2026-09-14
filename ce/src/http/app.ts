@@ -6,7 +6,13 @@ import { getCookie, setCookie } from "hono/cookie";
 import type { EventStore } from "../db/store.ts";
 import type { AuthService } from "./auth.ts";
 import type { AppKeys } from "./keys.ts";
-import { CAPABILITIES } from "../agent/capabilities.ts";
+import {
+  AGENT_CARD,
+  CAPABILITIES,
+  EDITION,
+  HOSTED_ARGUMENTS,
+  HOSTED_ONLY_CAPABILITIES,
+} from "../agent/capabilities.ts";
 import { fetchWeather, type WeatherFetcher } from "../weather/adapter.ts";
 import type { LlmClient } from "../llm/adapter.ts";
 import { IngestService } from "../ingest/service.ts";
@@ -178,23 +184,26 @@ export function createApp(opts: CreateAppOpts) {
     return c.json(opts.ingest.reject(c.req.param("id")));
   });
 
+  // Public so an agent can tell which Goyondo it is talking to before auth.
+  app.get("/api/agent/card", (c) => c.json(AGENT_CARD));
+
   app.get("/api/agent/capabilities", (c) => {
     if (!bearerOk(c, opts)) {
-      return c.json({ error: "unauthorized" }, 401);
+      return unauthorized(c);
     }
-    return c.json({ capabilities: CAPABILITIES });
+    return c.json({ edition: EDITION, capabilities: CAPABILITIES });
   });
 
   app.get("/api/agent/schema", (c) => {
     if (!bearerOk(c, opts)) {
-      return c.json({ error: "unauthorized" }, 401);
+      return unauthorized(c);
     }
     return c.text(schemaText);
   });
 
   app.post("/api/agent/task", async (c) => {
     if (!bearerOk(c, opts)) {
-      return c.json({ error: "unauthorized" }, 401);
+      return unauthorized(c);
     }
     const raw = await c.req.json<Record<string, unknown>>();
     if (raw.body && typeof raw.body === "object") {
@@ -204,6 +213,31 @@ export function createApp(opts: CreateAppOpts) {
     const args = (raw.arguments ?? {}) as Record<string, string>;
     if (!capability || raw.arguments === undefined) {
       return c.json({ error: "capability_and_arguments_required" }, 400);
+    }
+    const hostedCapability = HOSTED_ONLY_CAPABILITIES[capability];
+    if (hostedCapability) {
+      return c.json(
+        {
+          error: "hosted_capability_not_available",
+          edition: EDITION,
+          message: `${capability} is a goyondo.run capability. This is Community Edition. ${hostedCapability}`,
+          capability_registry_url: AGENT_CARD.capability_registry_url,
+        },
+        400,
+      );
+    }
+    const hostedArgs = Object.keys(args).filter((key) => key in HOSTED_ARGUMENTS);
+    if (hostedArgs.length > 0) {
+      return c.json(
+        {
+          error: "hosted_argument_names",
+          edition: EDITION,
+          message: "These are goyondo.run argument names. This is Community Edition.",
+          use_instead: Object.fromEntries(hostedArgs.map((key) => [key, HOSTED_ARGUMENTS[key]])),
+          schema_url: AGENT_CARD.schema_url,
+        },
+        400,
+      );
     }
     try {
       const result = await runCapability(capability, args, opts);
@@ -231,6 +265,22 @@ function requireOperator(c: Context, opts: CreateAppOpts) {
     return c.json({ error: "unauthorized" }, 401);
   }
   return undefined;
+}
+
+function unauthorized(c: Context) {
+  const header = c.req.header("authorization") ?? "";
+  if (header.startsWith("Bearer gyd_")) {
+    return c.json(
+      {
+        error: "unauthorized",
+        edition: EDITION,
+        message: "gyd_ keys belong to goyondo.run. This Community Edition instance uses gce_ tokens.",
+        card_url: "/api/agent/card",
+      },
+      401,
+    );
+  }
+  return c.json({ error: "unauthorized" }, 401);
 }
 
 function bearerOk(c: { req: { header: (n: string) => string | undefined } }, opts: CreateAppOpts): boolean {

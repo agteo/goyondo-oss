@@ -35,11 +35,12 @@ After sign-in, `POST /agent-token` (session cookie) returns a `gce_…` bearer t
 
 Then:
 
+- `GET /api/agent/card` (no token) — `"edition": "community"` confirms you are on CE, not goyondo.run
 - `GET /api/agent/capabilities`
 - `GET /api/agent/schema`
 - `POST /api/agent/task` with `{ "capability": "list_trips", "arguments": {} }`
 
-Hosted Goyondo names (`activities`, `itinerary_id`) are not accepted. See `src/agent/schema.md`.
+Hosted Goyondo names (`add_activity`, `itinerary_id`) and `gyd_` keys are rejected with an error that names the CE equivalent. See `src/agent/schema.md`.
 
 ## Create a trip
 

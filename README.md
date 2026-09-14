@@ -25,9 +25,9 @@ The app lives at **https://goyondo.run**. You do not install Goyondo from this r
 
 A **public, versioned map** for humans and AI agents: domain model, pitfalls, and copy-paste scripts that talk to the hosted API.
 
-An optional self-hosted Community Edition lives in [`ce/`](ce/). Teaching examples below still use `goyondo.run`.
+Everything outside [`ce/`](ce/) teaches the **hosted** API at `goyondo.run`. [`ce/`](ce/) is a separate, optional self-hosted Community Edition with its own vocabulary, tokens, and capabilities. It is not a copy of hosted Goyondo. See [Which API am I talking to?](#which-api-am-i-talking-to).
 
-It is **not** an SDK, not a self-hosted Goyondo, and not the source of truth for capability names or JSON argument schemas. Those come from the live service:
+This repo is **not** an SDK and not the source of truth for hosted capability names or JSON argument schemas. Those come from the live service:
 
 - `GET https://goyondo.run/api/agent/capabilities`
 - `GET https://goyondo.run/api/agent/card`
@@ -47,6 +47,7 @@ It is **not** an SDK, not a self-hosted Goyondo, and not the source of truth for
 - [SCHEMA.md](SCHEMA.md)
 - [PITFALLS.md](PITFALLS.md)
 - [Project layout](#project-layout)
+- [Which API am I talking to?](#which-api-am-i-talking-to)
 - [How agents should use this](#how-agents-should-use-this)
 - [Domain model](#domain-model)
 - [Pitfalls](#pitfalls)
@@ -97,11 +98,32 @@ goyondo-oss/
 ├── LICENSE                   # MIT
 ├── .env.example               # GOYONDO_BASE_URL, GOYONDO_API_KEY
 ├── scripts/check_capabilities.py
-└── examples/
-    ├── curl/quickstart.sh
-    ├── python/quickstart.py
-    └── typescript/quickstart.ts
+├── examples/                 # Hosted goyondo.run
+│   ├── curl/quickstart.sh
+│   ├── python/quickstart.py
+│   └── typescript/quickstart.ts
+└── ce/                       # Self-hosted Community Edition (separate API)
+    ├── README.md
+    └── src/agent/schema.md   # CE vocabulary: trip, day, event
 ```
+
+## Which API am I talking to?
+
+Hosted Goyondo and Community Edition both serve `POST /api/agent/task` and both have `list_trips`. Their other capabilities, argument names, and tokens differ. Check before you call anything else:
+
+```bash
+curl -s "$BASE_URL/api/agent/card" | jq '{name, edition, api_version}'
+```
+
+| | Hosted (`goyondo.run`) | Community Edition (`ce/`) |
+| ---- | ---- | ---- |
+| Card | `"name": "Goyondo"`, has `api_version` | `"edition": "community"`, `"hosted": false` |
+| Token | `gyd_…` via device auth | `gce_…` minted in the CE UI |
+| Day id for writes | `itinerary_id` | `day_id` |
+| Itinerary entry | activity (`add_activity`) | event (`create_event`) |
+| Docs | SCHEMA.md, PITFALLS.md | [`ce/src/agent/schema.md`](ce/src/agent/schema.md) |
+
+CE rejects hosted capability names, hosted argument names, and `gyd_` keys with an error naming the CE equivalent.
 
 ## How agents should use this
 
@@ -123,7 +145,7 @@ python3 scripts/check_capabilities.py
 
 ## Domain model
 
-See **[SCHEMA.md](SCHEMA.md)** — Trip → itinerary days → activities, plus user preferences. There is no `Segment` type.
+See **[SCHEMA.md](SCHEMA.md)** — Trip → itinerary days → activities, plus business-travel segments and user preferences.
 
 ## Pitfalls
 

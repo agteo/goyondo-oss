@@ -21,6 +21,47 @@ describe("agent API", () => {
     expect(unauth.status).toBe(401);
   });
 
+  it("identifies itself as Community Edition before auth", async () => {
+    const { app } = makeHarness();
+    const res = await app.request("/api/agent/card");
+    expect(res.status).toBe(200);
+    const card = await res.json();
+    expect(card.edition).toBe("community");
+    expect(card.hosted).toBe(false);
+    expect(card.name).not.toBe("Goyondo");
+  });
+
+  it("explains hosted capabilities, argument names, and gyd_ keys instead of failing opaquely", async () => {
+    const { app, auth } = makeHarness();
+    await operatorSession(app);
+    const token = auth.mintAgentToken();
+    const task = (body: unknown, bearer = token) =>
+      app.request("/api/agent/task", {
+        method: "POST",
+        headers: { authorization: `Bearer ${bearer}`, "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+    const hostedCap = await task({ capability: "add_activity", arguments: { title: "Dinner" } });
+    expect(hostedCap.status).toBe(400);
+    const capBody = await hostedCap.json();
+    expect(capBody.error).toBe("hosted_capability_not_available");
+    expect(capBody.message).toContain("create_event");
+
+    const hostedArg = await task({ capability: "get_day", arguments: { trip_id: "t", itinerary_id: "d" } });
+    expect(hostedArg.status).toBe(400);
+    const argBody = await hostedArg.json();
+    expect(argBody.error).toBe("hosted_argument_names");
+    expect(argBody.use_instead).toEqual({ itinerary_id: "day_id" });
+
+    const hostedKey = await task({ capability: "list_trips", arguments: {} }, "gyd_abc");
+    expect(hostedKey.status).toBe(401);
+    expect((await hostedKey.json()).message).toContain("goyondo.run");
+
+    const shared = await task({ capability: "list_trips", arguments: {} });
+    expect(shared.status).toBe(200);
+  });
+
   it("does not list hosted group or billing tools", async () => {
     const names = CAPABILITIES.map((c) => c.name);
     expect(names.join(" ")).not.toMatch(/group|billing|quota|harmony/i);
