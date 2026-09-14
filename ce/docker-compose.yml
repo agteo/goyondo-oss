@@ -1,0 +1,14 @@
+services:
+  ce:
+    build: .
+    ports:
+      - "8787:8787"
+    env_file:
+      - .env
+    environment:
+      CE_DATA_DIR: /data
+    volumes:
+      - ce-data:/data
+
+volumes:
+  ce-data:

@@ -25,6 +25,8 @@ The app lives at **https://goyondo.run**. You do not install Goyondo from this r
 
 A **public, versioned map** for humans and AI agents: domain model, pitfalls, and copy-paste scripts that talk to the hosted API.
 
+An optional self-hosted Community Edition lives in [`ce/`](ce/). Teaching examples below still use `goyondo.run`.
+
 It is **not** an SDK, not a self-hosted Goyondo, and not the source of truth for capability names or JSON argument schemas. Those come from the live service:
 
 - `GET https://goyondo.run/api/agent/capabilities`
