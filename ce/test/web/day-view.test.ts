@@ -28,6 +28,9 @@ describe("day view", () => {
     const html = await (await app.request("/today", { headers: { cookie } })).text();
     expect(html).toContain("data-weather");
     expect(html).toContain("data-events");
+    expect(html).toContain("data-day-row");
+    expect(html).toContain("Libre Franklin");
+    expect(html).toContain("#356448");
   });
 
   it("keeps events when weather key is missing (AE2)", async () => {
@@ -69,5 +72,25 @@ describe("day view", () => {
     const body = await res.json();
     expect(body.event.start).toContain("T14:00:00");
     expect(store.getEvent(lunch.id)?.start).toContain("T14:00:00");
+  });
+
+  it("creates a trip from the editorial day page", async () => {
+    const { app } = makeHarness();
+    const cookie = cookieHeader(await operatorSession(app));
+    const created = await app.request("/today/trips", {
+      method: "POST",
+      headers: { cookie, "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        name: "Lisbon",
+        place: "Lisbon",
+        startDate: "2026-11-01",
+        endDate: "2026-11-03",
+      }),
+    });
+    expect(created.status).toBe(302);
+    const html = await (await app.request("/today", { headers: { cookie } })).text();
+    expect(html).toContain("Lisbon");
+    expect(html).toContain("data-day-row");
+    expect(html).toContain("Add event");
   });
 });

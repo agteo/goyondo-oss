@@ -61,6 +61,25 @@ export class IngestService {
     return { id, storedPath };
   }
 
+  find(tripId: string, opts: { documentId?: string; name?: string }) {
+    if (opts.documentId) {
+      const row = this.store.db
+        .prepare(
+          `SELECT id, trip_id AS tripId, filename, instruction, extracted_text AS extractedText
+           FROM documents WHERE trip_id = ? AND id = ?`,
+        )
+        .get(tripId, opts.documentId);
+      return row ? [row] : [];
+    }
+    const like = `%${(opts.name ?? "").replace(/[\\%_]/g, "")}%`;
+    return this.store.db
+      .prepare(
+        `SELECT id, trip_id AS tripId, filename, instruction, extracted_text AS extractedText
+         FROM documents WHERE trip_id = ? AND filename LIKE ?`,
+      )
+      .all(tripId, like);
+  }
+
   list(tripId: string) {
     return this.store.db
       .prepare(

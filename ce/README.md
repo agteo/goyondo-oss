@@ -35,11 +35,13 @@ After sign-in, `POST /agent-token` (session cookie) returns a `gce_…` bearer t
 
 Then:
 
-- `GET /api/agent/capabilities`
-- `GET /api/agent/schema`
+- `GET /api/agent/card` (no token) — `"edition": "community"` confirms you are on CE, not goyondo.run. `first_run.first_capability` is `list_trips`.
+- `GET /api/agent/capabilities` and `GET /api/agent/schema` (no token)
 - `POST /api/agent/task` with `{ "capability": "list_trips", "arguments": {} }`
 
-Hosted Goyondo names (`activities`, `itinerary_id`) are not accepted. See `src/agent/schema.md`.
+Solo trips are created with `create_trip` (`name`, `place`, `start_date`, `end_date`). Fill a trip with `create_event` or `create_events`. `get_plan_warnings` reports overlaps and duplicate titles locally. MCP stays on goyondo.run.
+
+Hosted Goyondo names (`add_activity`, `itinerary_id`, `destination`) and `gyd_` keys are rejected with an error that names the CE equivalent. See `src/agent/schema.md`.
 
 ## Create a trip
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { flagConflicts } from "../../src/domain/conflicts.ts";
+import { planWarnings } from "../../src/domain/warnings.ts";
 import type { Event } from "../../src/domain/types.ts";
 
 function ev(partial: Partial<Event> & Pick<Event, "id" | "start" | "end">): Event {
@@ -58,5 +59,29 @@ describe("flagConflicts", () => {
       ev({ id: "b", start: "2026-09-14T15:00:00", end: "2026-09-14T16:00:00" }),
     ];
     expect(flagConflicts(events).every((e) => !e.conflict)).toBe(true);
+  });
+});
+
+describe("planWarnings", () => {
+  it("reports duplicate titles, overlaps, and repeats, and skips hotels", () => {
+    const warnings = planWarnings([
+      {
+        id: "d1",
+        date: "2026-11-01",
+        events: [
+          ev({ id: "a", title: "Museum", start: "2026-11-01T14:00:00", end: "2026-11-01T16:00:00" }),
+          ev({ id: "b", title: "Museum", start: "2026-11-01T15:00:00", end: "2026-11-01T17:00:00" }),
+          ev({ id: "h", title: "Hotel", kind: "hotel", start: "2026-11-01T18:00:00", end: "2026-11-02T10:00:00" }),
+        ],
+      },
+      {
+        id: "d2",
+        date: "2026-11-02",
+        events: [ev({ id: "c", dayId: "d2", title: "Museum", start: "2026-11-02T10:00:00", end: "2026-11-02T12:00:00" })],
+      },
+    ]);
+    expect(warnings.map((warning) => warning.type)).toEqual(["duplicate_event", "time_overlap", "repeated_event"]);
+    expect(warnings[0]?.severity).toBe("warning");
+    expect(warnings.at(-1)?.severity).toBe("info");
   });
 });
