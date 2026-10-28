@@ -29,6 +29,8 @@ describe("agent API", () => {
     expect(card.edition).toBe("community");
     expect(card.hosted).toBe(false);
     expect(card.name).not.toBe("Goyondo");
+    expect(card.first_run.first_capability).toBe("list_trips");
+    expect(card.first_run.empty_list_is_success).toBe(true);
   });
 
   it("explains hosted capabilities, argument names, and gyd_ keys instead of failing opaquely", async () => {
@@ -45,18 +47,18 @@ describe("agent API", () => {
     const hostedCap = await task({ capability: "add_activity", arguments: { title: "Dinner" } });
     expect(hostedCap.status).toBe(400);
     const capBody = await hostedCap.json();
-    expect(capBody.error).toBe("hosted_capability_not_available");
-    expect(capBody.message).toContain("create_event");
+    expect(capBody.error.code).toBe("hosted_capability_not_available");
+    expect(capBody.error.message).toContain("create_event");
 
     const hostedArg = await task({ capability: "get_day", arguments: { trip_id: "t", itinerary_id: "d" } });
     expect(hostedArg.status).toBe(400);
     const argBody = await hostedArg.json();
-    expect(argBody.error).toBe("hosted_argument_names");
+    expect(argBody.error.code).toBe("hosted_argument_names");
     expect(argBody.use_instead).toEqual({ itinerary_id: "day_id" });
 
     const hostedKey = await task({ capability: "list_trips", arguments: {} }, "gyd_abc");
     expect(hostedKey.status).toBe(401);
-    expect((await hostedKey.json()).message).toContain("goyondo.run");
+    expect((await hostedKey.json()).error.message).toContain("goyondo.run");
 
     const shared = await task({ capability: "list_trips", arguments: {} });
     expect(shared.status).toBe(200);
@@ -137,17 +139,110 @@ describe("agent API", () => {
     expect(listed.find((e) => e.id === museum.id)?.start).toContain("T16:00:00");
   });
 
-  it("serves capabilities and schema to a bearer token", async () => {
-    const { app, auth } = makeHarness();
-    await operatorSession(app);
-    const token = auth.mintAgentToken();
-    const caps = await app.request("/api/agent/capabilities", {
-      headers: { authorization: `Bearer ${token}` },
-    });
-    const schema = await app.request("/api/agent/schema", {
-      headers: { authorization: `Bearer ${token}` },
-    });
+  it("serves capabilities and schema without a token", async () => {
+    const { app } = makeHarness();
+    const caps = await app.request("/api/agent/capabilities");
+    const schema = await app.request("/api/agent/schema");
     expect(caps.status).toBe(200);
     expect(await schema.text()).toContain("CE-native");
+  });
+
+  it("creates a solo trip, fills events once, and reports local warnings", async () => {
+    const { app, auth, store } = makeHarness();
+    await operatorSession(app);
+    const token = auth.mintAgentToken();
+    const task = (body: unknown) =>
+      app.request("/api/agent/task", {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+    const hostedTrip = await task({
+      capability: "create_trip",
+      arguments: { destination: "Lisbon", start_date: "2026-11-01", end_date: "2026-11-02" },
+    });
+    expect((await hostedTrip.json()).error.code).toBe("hosted_argument_names");
+
+    const created = await task({
+      capability: "create_trip",
+      arguments: { name: "Lisbon", place: "Lisbon", start_date: "2026-11-01", end_date: "2026-11-02" },
+    });
+    const createdBody = await created.json();
+    expect(created.status).toBe(200);
+    const tripId = createdBody.result.trip.id as string;
+    const [day1, day2] = createdBody.result.days as { id: string }[];
+
+    const missing = await task({
+      capability: "nope",
+      arguments: {},
+    });
+    expect(missing.status).toBe(404);
+    expect((await missing.json()).available_capabilities).toContain("create_events");
+
+    const invalid = await task({
+      capability: "create_events",
+      arguments: {
+        trip_id: tripId,
+        days: [{ day_id: "missing", events: [{ title: "Walk", start: "2026-11-01T09:00:00", end: "2026-11-01T10:00:00" }] }],
+      },
+    });
+    expect(invalid.status).toBe(400);
+    expect(store.listEvents(tripId)).toHaveLength(0);
+
+    const batch = await task({
+      capability: "create_events",
+      arguments: {
+        trip_id: tripId,
+        days: [
+          {
+            day_id: day1.id,
+            events: [
+              { title: "Museum", start: "2026-11-01T14:00:00", end: "2026-11-01T16:00:00" },
+              { title: "Museum", kind: "activity", start: "2026-11-01T14:30:00", end: "2026-11-01T15:30:00" },
+            ],
+          },
+          {
+            day_id: day2.id,
+            events: [{ title: "Museum", start: "2026-11-02T10:00:00", end: "2026-11-02T12:00:00" }],
+          },
+        ],
+      },
+    });
+    const batchBody = await batch.json();
+    expect(batch.status).toBe(200);
+    expect(batchBody.result.events).toHaveLength(3);
+    expect(batchBody.result.warnings.map((warning: { type: string }) => warning.type)).toEqual(
+      expect.arrayContaining(["duplicate_event", "time_overlap", "repeated_event"]),
+    );
+
+    const notes = await task({
+      capability: "update_day_notes",
+      arguments: { trip_id: tripId, day_id: day1.id, notes: "Rain in the afternoon" },
+    });
+    expect((await notes.json()).result.day.notes).toBe("Rain in the afternoon");
+
+    const attached = await task({
+      capability: "attach_document",
+      arguments: { trip_id: tripId, filename: "hotel.txt", text: "Check in at 15:00" },
+    });
+    const documentId = (await attached.json()).result.id as string;
+    const doc = await task({
+      capability: "get_document",
+      arguments: { trip_id: tripId, document_id: documentId },
+    });
+    expect((await doc.json()).result.documents[0].extractedText).toContain("15:00");
+
+    const listed = await task({ capability: "list_trips", arguments: { limit: 1 } });
+    const listedBody = await listed.json();
+    expect(listedBody.result.trips).toHaveLength(1);
+    expect(listedBody.result.has_more).toBe(false);
+
+    const plan = await task({ capability: "get_plan_warnings", arguments: { trip_id: tripId } });
+    expect((await plan.json()).result.warnings.length).toBeGreaterThan(0);
+    const days = await task({ capability: "list_days", arguments: { trip_id: tripId } });
+    expect((await days.json()).result.days).toHaveLength(2);
+    const events = await task({ capability: "list_events", arguments: { trip_id: tripId } });
+    expect((await events.json()).result.events).toHaveLength(3);
   });
 });

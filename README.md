@@ -120,7 +120,9 @@ curl -s "$BASE_URL/api/agent/card" | jq '{name, edition, api_version}'
 | Card | `"name": "Goyondo"`, has `api_version` | `"edition": "community"`, `"hosted": false` |
 | Token | `gyd_…` via device auth | `gce_…` minted in the CE UI |
 | Day id for writes | `itinerary_id` | `day_id` |
-| Itinerary entry | activity (`add_activity`) | event (`create_event`) |
+| Itinerary entry | activity (`add_activity`) | event (`create_event` / `create_events`) |
+| Create a trip | `create_trip` with `destination`; AI is optional | `create_trip` with `name`, `place`, and dates only |
+| Plan checks | `get_trip_alerts` (includes maps) | `get_plan_warnings` (local overlaps and duplicates) |
 | Docs | SCHEMA.md, PITFALLS.md | [`ce/src/agent/schema.md`](ce/src/agent/schema.md) |
 
 CE rejects hosted capability names, hosted argument names, and `gyd_` keys with an error naming the CE equivalent.

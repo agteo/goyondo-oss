@@ -13,6 +13,7 @@ export type Day = {
   id: string;
   tripId: string;
   date: string;
+  notes?: string | null;
 };
 
 export type Event = {

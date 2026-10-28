@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS days (
   id TEXT PRIMARY KEY,
   trip_id TEXT NOT NULL,
   date TEXT NOT NULL,
+  notes TEXT,
   FOREIGN KEY (trip_id) REFERENCES trips(id)
 );
 CREATE TABLE IF NOT EXISTS events (
@@ -48,6 +49,14 @@ export class EventStore {
   constructor(filename = ":memory:") {
     this.db = new DatabaseSync(filename);
     this.db.exec(SCHEMA);
+    this.migrate();
+  }
+
+  private migrate(): void {
+    const columns = this.db.prepare("PRAGMA table_info(days)").all() as { name: string }[];
+    if (!columns.some((column) => column.name === "notes")) {
+      this.db.exec("ALTER TABLE days ADD COLUMN notes TEXT");
+    }
   }
 
   close(): void {
@@ -78,16 +87,33 @@ export class EventStore {
       .all() as Trip[];
   }
 
+  listTripsPage(limit?: number): { trips: Trip[]; hasMore: boolean } {
+    const trips = this.listTrips();
+    if (limit === undefined) {
+      return { trips, hasMore: false };
+    }
+    return { trips: trips.slice(0, limit), hasMore: trips.length > limit };
+  }
+
   listDays(tripId: string): Day[] {
     return this.db
-      .prepare("SELECT id, trip_id AS tripId, date FROM days WHERE trip_id = ? ORDER BY date")
+      .prepare("SELECT id, trip_id AS tripId, date, notes FROM days WHERE trip_id = ? ORDER BY date")
       .all(tripId) as Day[];
   }
 
   getDay(tripId: string, dayId: string): Day | undefined {
     return this.db
-      .prepare("SELECT id, trip_id AS tripId, date FROM days WHERE trip_id = ? AND id = ?")
+      .prepare("SELECT id, trip_id AS tripId, date, notes FROM days WHERE trip_id = ? AND id = ?")
       .get(tripId, dayId) as Day | undefined;
+  }
+
+  updateDayNotes(tripId: string, dayId: string, notes: string): Day {
+    const current = this.getDay(tripId, dayId);
+    if (!current) {
+      throw new Error(`Unknown day: ${dayId}`);
+    }
+    this.db.prepare("UPDATE days SET notes = ? WHERE id = ? AND trip_id = ?").run(notes, dayId, tripId);
+    return this.getDay(tripId, dayId)!;
   }
 
   createEvent(input: CreateEventInput): Event {
@@ -104,6 +130,28 @@ export class EventStore {
     };
     this.insertEvent(event);
     return event;
+  }
+
+  createEvents(batches: { dayId: string; events: CreateEventInput[] }[]): Event[] {
+    const created: Event[] = [];
+    this.db.exec("BEGIN");
+    try {
+      for (const batch of batches) {
+        for (const input of batch.events) {
+          created.push(
+            this.createEvent({
+              ...input,
+              dayId: batch.dayId,
+            }),
+          );
+        }
+      }
+      this.db.exec("COMMIT");
+    } catch (err) {
+      this.db.exec("ROLLBACK");
+      throw err;
+    }
+    return created;
   }
 
   insertEvent(event: Event): void {
@@ -134,6 +182,10 @@ export class EventStore {
       .all(tripId, dayId) as Event[];
     const filtered = includeCanceled ? rows : rows.filter((e) => e.status !== "canceled");
     return flagConflicts(filtered);
+  }
+
+  listEvents(tripId: string): Event[] {
+    return this.listDays(tripId).flatMap((day) => this.listDayEvents(tripId, day.id));
   }
 
   moveEvent(eventId: string, patch: { dayId?: string; start?: string; end?: string }): Event {
