@@ -4,17 +4,17 @@ Self-hosted travel harness: day itinerary, weather (optional key), event edits, 
 
 ## Quick start (local)
 
+Node.js 22.13 or newer.
+
 ```bash
 cd ce
-cp .env.example .env
 npm install
-npm test
 npm run dev
 ```
 
-Open http://127.0.0.1:8787 — first visitor becomes the only operator.
+Open http://127.0.0.1:8787. The first visitor creates the only operator account, then creates a trip on that page (name, place, dates). SQLite is `data/ce.sqlite` next to this folder.
 
-Optional in `.env`: `WEATHER_API_KEY` (OpenWeatherMap), `LLM_API_KEY` (OpenAI-compatible). Maps keys are not used.
+Weather and document parsing are optional. Copy `.env.example` to `.env`, set `WEATHER_API_KEY` (OpenWeatherMap) and/or `LLM_API_KEY` (OpenAI-compatible), and restart. Leave `CE_DATA_DIR` unset on your machine. Maps keys are not used.
 
 ## VPS (Docker Compose)
 
@@ -39,7 +39,7 @@ Then:
 - `GET /api/agent/capabilities` and `GET /api/agent/schema` (no token)
 - `POST /api/agent/task` with `{ "capability": "list_trips", "arguments": {} }`
 
-Solo trips are created with `create_trip` (`name`, `place`, `start_date`, `end_date`). Fill a trip with `create_event` or `create_events`. `get_plan_warnings` reports overlaps and duplicate titles locally. MCP stays on goyondo.run.
+Solo trips are created with `create_trip` (`name`, `place`, `start_date`, `end_date`). Fill a trip with `create_event` or `create_events`. `get_plan_warnings` reports overlaps and duplicate titles locally.
 
 Hosted Goyondo names (`add_activity`, `itinerary_id`, `destination`) and `gyd_` keys are rejected with an error that names the CE equivalent. See `src/agent/schema.md`.
 

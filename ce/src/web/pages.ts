@@ -126,7 +126,7 @@ export function renderDayPage(view: {
     : `<form method="post" action="/today/agent-token?${tripQuery}${day ? `&amp;day=${encodeURIComponent(day.id)}` : ""}">
         <button type="submit" class="quiet">Mint agent token</button>
       </form>
-      <p class="meta">One-time <span class="mono">gce_</span> token for <span class="mono">POST /api/agent/task</span>. MCP stays on goyondo.run.</p>`;
+      <p class="meta">One-time <span class="mono">gce_</span> token for <span class="mono">POST /api/agent/task</span>.</p>`;
 
   return layout(
     trip?.name ?? "Goyondo CE",

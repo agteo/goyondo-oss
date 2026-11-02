@@ -2,6 +2,9 @@
   "name": "goyondo-ce",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
   "scripts": {
     "test": "vitest run",
     "dev": "tsx src/http/server.ts",

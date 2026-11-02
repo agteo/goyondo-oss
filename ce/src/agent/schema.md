@@ -2,7 +2,7 @@
 
 This instance is **not** hosted Goyondo. Vocabulary is CE-native: **trip**, **day**, **event**, **warning**.
 
-Hosted Goyondo (`SCHEMA.md` in the repo root) uses `activities` and `itinerary_id`. Those names are **not** accepted here. MCP is hosted-only. CE agents call `POST /api/agent/task`.
+Hosted Goyondo (`SCHEMA.md` in the repo root) uses `activities` and `itinerary_id`. Those names are **not** accepted here. CE agents call `POST /api/agent/task`.
 
 ## Which API is this?
 
