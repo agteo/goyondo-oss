@@ -1,5 +1,5 @@
 services:
-  ce:
+  community-edition:
     build: .
     ports:
       - "8787:8787"
@@ -8,7 +8,7 @@ services:
     environment:
       CE_DATA_DIR: /data
     volumes:
-      - ce-data:/data
+      - community-edition-data:/data
 
 volumes:
-  ce-data:
+  community-edition-data:

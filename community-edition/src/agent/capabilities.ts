@@ -227,6 +227,10 @@ export const HOSTED_ARGUMENTS: Record<string, string> = {
   activity_type: "kind",
   destination: "place",
   skip_ai_generation: "(not applicable; create events with create_event or create_events)",
+  children: "(not stored; Community Edition has no family composition)",
+  default_children: "(not stored; Community Edition has no family composition)",
+  dietary_restrictions: "(not stored)",
+  metadata: "(not stored; there is no overnight_transport flag)",
 };
 
 export const AGENT_CARD = {

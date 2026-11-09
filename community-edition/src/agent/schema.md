@@ -2,7 +2,7 @@
 
 This instance is **not** hosted Goyondo. Vocabulary is CE-native: **trip**, **day**, **event**, **warning**.
 
-Hosted Goyondo (`SCHEMA.md` in the repo root) uses `activities` and `itinerary_id`. Those names are **not** accepted here. MCP is hosted-only. CE agents call `POST /api/agent/task`.
+Hosted Goyondo (`SCHEMA.md` in the repo root) uses `activities` and `itinerary_id`. Those names are **not** accepted here. CE agents call `POST /api/agent/task`.
 
 ## Which API is this?
 
@@ -11,7 +11,7 @@ Hosted Goyondo (`SCHEMA.md` in the repo root) uses `activities` and `itinerary_i
 If you send hosted names here, CE says so instead of failing silently. Errors use `{ "error": { "code", "message" } }`:
 
 - `hosted_capability_not_available` (400): e.g. `add_activity`, `save_itinerary`, `get_trip_alerts`. The message names the CE equivalent.
-- `hosted_argument_names` (400): e.g. `itinerary_id`, `destination`. `use_instead` maps it to the CE name.
+- `hosted_argument_names` (400): e.g. `itinerary_id`, `destination`, `children`, `metadata`. `use_instead` maps it to the CE name, or says the field is not stored.
 - `capability_not_found` (404): includes `available_capabilities`.
 - `validation_failed` (400): the message says what to fix. Nothing was written.
 - `401` with a `gyd_` key: that key belongs to goyondo.run.
@@ -52,6 +52,9 @@ Do **not** nest arguments under `body`. Flat `{ capability, arguments }` only.
 | `save_itinerary` | `create_events` |
 | `get_trip_alerts` | `get_plan_warnings` |
 | `skip_ai_generation` | not applicable; create events directly |
+| `children`, `default_children` | not stored; there is no family composition |
+| `dietary_restrictions` | not stored |
+| `metadata` | not stored; there is no `overnight_transport` flag |
 
 ## Events
 

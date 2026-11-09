@@ -1,7 +1,10 @@
 {
-  "name": "goyondo-ce",
+  "name": "goyondo-community-edition",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
   "scripts": {
     "test": "vitest run",
     "dev": "tsx src/http/server.ts",

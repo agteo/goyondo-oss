@@ -56,6 +56,27 @@ describe("agent API", () => {
     expect(argBody.error.code).toBe("hosted_argument_names");
     expect(argBody.use_instead).toEqual({ itinerary_id: "day_id" });
 
+    const hostedFamily = await task({
+      capability: "create_trip",
+      arguments: {
+        name: "Lisbon",
+        place: "Lisbon",
+        start_date: "2026-11-01",
+        end_date: "2026-11-02",
+        children: { infants: 0, children: 1, teens: 0 },
+        dietary_restrictions: ["vegetarian"],
+        metadata: { overnight_transport: true },
+      },
+    });
+    expect(hostedFamily.status).toBe(400);
+    const familyBody = await hostedFamily.json();
+    expect(familyBody.error.code).toBe("hosted_argument_names");
+    expect(familyBody.use_instead).toMatchObject({
+      children: expect.stringContaining("not stored"),
+      dietary_restrictions: "(not stored)",
+      metadata: expect.stringContaining("overnight_transport"),
+    });
+
     const hostedKey = await task({ capability: "list_trips", arguments: {} }, "gyd_abc");
     expect(hostedKey.status).toBe(401);
     expect((await hostedKey.json()).error.message).toContain("goyondo.run");

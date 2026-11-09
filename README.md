@@ -1,49 +1,46 @@
 # Goyondo OSS
 
-**Reference examples and agent docs for [Goyondo](https://goyondo.run)** — an AI travel planner that your own agent can operate.
+Run your own trip manager, or connect an agent to hosted [Goyondo](https://goyondo.run).
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/status-examples-informational)](#what-this-repo-is)
-[![API](https://img.shields.io/badge/runtime-goyondo.run-0f766e)](https://goyondo.run)
-
-**Product:** [goyondo.run](https://goyondo.run) · **Agent overview:** [llms.txt](https://goyondo.run/llms.txt) · **Auth:** [auth.md](https://goyondo.run/auth.md)
+[![Status](https://img.shields.io/badge/status-community%20edition-0f766e)](#run-your-own-trip-manager)
 
 ---
 
-## What is Goyondo?
+## Run your own trip manager
 
-[Goyondo](https://goyondo.run) is a hosted travel-planning product. People (and the agents they delegate) can:
+Community Edition in [`community-edition/`](community-edition/) is a single-operator trip manager: days, events, optional weather, and an agent API. It does not need a Goyondo account. It is not a copy of goyondo.run. See [Which API am I talking to?](#which-api-am-i-talking-to).
 
-- Create trips and generate or edit day-by-day itineraries
-- Store destinations, dates, travelers, and preferences in one place
-- Collaborate on group trips
-- Use a scoped API key so an agent can list trips, create trips, and call other published capabilities on the user’s behalf
+Node.js 22.13 or newer.
 
-The app lives at **https://goyondo.run**. You do not install Goyondo from this repository. You sign in there (free tier includes **10 trips** with an API key) and connect an agent.
+```bash
+cd community-edition
+npm install
+npm run dev
+```
 
-## What this repo is
+Open http://127.0.0.1:8787. The first visitor creates the only operator account. On that page, create a trip with a name, place, and dates. The database is `community-edition/data/ce.sqlite`.
 
-A **public, versioned map** for humans and AI agents: domain model, pitfalls, and copy-paste scripts that talk to the hosted API.
+Weather and document parsing are optional. Copy `community-edition/.env.example` to `community-edition/.env`, set `WEATHER_API_KEY` and/or `LLM_API_KEY`, and restart. Leave `CE_DATA_DIR` unset on your machine. A VPS setup is in [community-edition/README.md](community-edition/README.md).
 
-Everything outside [`ce/`](ce/) teaches the **hosted** API at `goyondo.run`. [`ce/`](ce/) is a separate, optional self-hosted Community Edition with its own vocabulary, tokens, and capabilities. It is not a copy of hosted Goyondo. See [Which API am I talking to?](#which-api-am-i-talking-to).
+After you are signed in, mint a `gce_…` token from the page and call `POST /api/agent/task`. Trip fields are `name`, `place`, `start_date`, and `end_date`. Agent notes: [community-edition/src/agent/schema.md](community-edition/src/agent/schema.md).
 
-This repo is **not** an SDK and not the source of truth for hosted capability names or JSON argument schemas. Those come from the live service:
+## Hosted API examples
+
+[Goyondo](https://goyondo.run) is the hosted planner: itineraries, group trips, and a scoped API key. These examples talk to that service. They are not an SDK. Capability names and argument schemas come from the live service:
 
 - `GET https://goyondo.run/api/agent/capabilities`
 - `GET https://goyondo.run/api/agent/card`
 
+Self-authored trips have no trip-count cap when the agent passes `skip_ai_generation: true` and writes the itinerary itself. Starter includes 3 active Goyondo AI-planned trips, or 10 after any API key is created. Pro has no AI trip-count cap. The live card is the quota source.
+
 > [!NOTE]
-> Discovery starts at [`llms.txt`](https://goyondo.run/llms.txt). Use this repo when you need a stable schema, runnable examples, and the mistakes agents actually make.
-
-## Why it exists
-
-- **Agents** need a short, forkable reference they can read before any auth.
-- **Developers** need Python, TypeScript, and curl that start with an empty API key and complete device authorization.
-- **Goyondo itself** stays the runtime, so this repo can stay small and MIT-licensed.
+> Hosted discovery starts at [`llms.txt`](https://goyondo.run/llms.txt). Use this repo for a stable schema, runnable examples, and the mistakes agents actually make.
 
 ## Contents
 
-- [Quickstart](#quickstart)
+- [Run your own trip manager](#run-your-own-trip-manager)
+- [Hosted quickstart](#hosted-quickstart)
 - [SCHEMA.md](SCHEMA.md)
 - [PITFALLS.md](PITFALLS.md)
 - [Project layout](#project-layout)
@@ -57,7 +54,7 @@ This repo is **not** an SDK and not the source of truth for hosted capability na
 - [Contributing](#contributing)
 - [License](#license)
 
-## Quickstart
+## Hosted quickstart
 
 You need a Goyondo account. No API key is required to start.
 
@@ -102,7 +99,7 @@ goyondo-oss/
 │   ├── curl/quickstart.sh
 │   ├── python/quickstart.py
 │   └── typescript/quickstart.ts
-└── ce/                       # Self-hosted Community Edition (separate API)
+└── community-edition/        # Self-hosted Community Edition (separate API)
     ├── README.md
     └── src/agent/schema.md   # CE vocabulary: trip, day, event
 ```
@@ -115,7 +112,7 @@ Hosted Goyondo and Community Edition both serve `POST /api/agent/task` and both 
 curl -s "$BASE_URL/api/agent/card" | jq '{name, edition, api_version}'
 ```
 
-| | Hosted (`goyondo.run`) | Community Edition (`ce/`) |
+| | Hosted (`goyondo.run`) | Community Edition (`community-edition/`) |
 | ---- | ---- | ---- |
 | Card | `"name": "Goyondo"`, has `api_version` | `"edition": "community"`, `"hosted": false` |
 | Token | `gyd_…` via device auth | `gce_…` minted in the CE UI |
@@ -123,7 +120,7 @@ curl -s "$BASE_URL/api/agent/card" | jq '{name, edition, api_version}'
 | Itinerary entry | activity (`add_activity`) | event (`create_event` / `create_events`) |
 | Create a trip | `create_trip` with `destination`; AI is optional | `create_trip` with `name`, `place`, and dates only |
 | Plan checks | `get_trip_alerts` (includes maps) | `get_plan_warnings` (local overlaps and duplicates) |
-| Docs | SCHEMA.md, PITFALLS.md | [`ce/src/agent/schema.md`](ce/src/agent/schema.md) |
+| Docs | SCHEMA.md, PITFALLS.md | [`community-edition/src/agent/schema.md`](community-edition/src/agent/schema.md) |
 
 CE rejects hosted capability names, hosted argument names, and `gyd_` keys with an error naming the CE equivalent.
 
@@ -211,7 +208,7 @@ Content-Type: application/json
 
 ## Contributing
 
-This is an early public reference, not a full application. Issues and PRs that fix examples, schema docs, or pitfalls against the live API are welcome. Do not send secrets or production keys.
+Issues and PRs that fix Community Edition, the examples, the schema notes, or the pitfalls against the live API are welcome. Do not send secrets or production keys.
 
 ## License
 
