@@ -9,21 +9,21 @@ Run your own trip manager, or connect an agent to hosted [Goyondo](https://goyon
 
 ## Run your own trip manager
 
-Community Edition in [`ce/`](ce/) is a single-operator trip manager: days, events, optional weather, and an agent API. It does not need a Goyondo account. It is not a copy of goyondo.run. See [Which API am I talking to?](#which-api-am-i-talking-to).
+Community Edition in [`community-edition/`](community-edition/) is a single-operator trip manager: days, events, optional weather, and an agent API. It does not need a Goyondo account. It is not a copy of goyondo.run. See [Which API am I talking to?](#which-api-am-i-talking-to).
 
 Node.js 22.13 or newer.
 
 ```bash
-cd ce
+cd community-edition
 npm install
 npm run dev
 ```
 
-Open http://127.0.0.1:8787. The first visitor creates the only operator account. On that page, create a trip with a name, place, and dates. The database is `ce/data/ce.sqlite`.
+Open http://127.0.0.1:8787. The first visitor creates the only operator account. On that page, create a trip with a name, place, and dates. The database is `community-edition/data/ce.sqlite`.
 
-Weather and document parsing are optional. Copy `ce/.env.example` to `ce/.env`, set `WEATHER_API_KEY` and/or `LLM_API_KEY`, and restart. Leave `CE_DATA_DIR` unset on your machine. A VPS setup is in [ce/README.md](ce/README.md).
+Weather and document parsing are optional. Copy `community-edition/.env.example` to `community-edition/.env`, set `WEATHER_API_KEY` and/or `LLM_API_KEY`, and restart. Leave `CE_DATA_DIR` unset on your machine. A VPS setup is in [community-edition/README.md](community-edition/README.md).
 
-After you are signed in, mint a `gce_…` token from the page and call `POST /api/agent/task`. Trip fields are `name`, `place`, `start_date`, and `end_date`. Agent notes: [ce/src/agent/schema.md](ce/src/agent/schema.md).
+After you are signed in, mint a `gce_…` token from the page and call `POST /api/agent/task`. Trip fields are `name`, `place`, `start_date`, and `end_date`. Agent notes: [community-edition/src/agent/schema.md](community-edition/src/agent/schema.md).
 
 ## Hosted API examples
 
@@ -99,7 +99,7 @@ goyondo-oss/
 │   ├── curl/quickstart.sh
 │   ├── python/quickstart.py
 │   └── typescript/quickstart.ts
-└── ce/                       # Self-hosted Community Edition (separate API)
+└── community-edition/        # Self-hosted Community Edition (separate API)
     ├── README.md
     └── src/agent/schema.md   # CE vocabulary: trip, day, event
 ```
@@ -112,7 +112,7 @@ Hosted Goyondo and Community Edition both serve `POST /api/agent/task` and both 
 curl -s "$BASE_URL/api/agent/card" | jq '{name, edition, api_version}'
 ```
 
-| | Hosted (`goyondo.run`) | Community Edition (`ce/`) |
+| | Hosted (`goyondo.run`) | Community Edition (`community-edition/`) |
 | ---- | ---- | ---- |
 | Card | `"name": "Goyondo"`, has `api_version` | `"edition": "community"`, `"hosted": false` |
 | Token | `gyd_…` via device auth | `gce_…` minted in the CE UI |
@@ -120,7 +120,7 @@ curl -s "$BASE_URL/api/agent/card" | jq '{name, edition, api_version}'
 | Itinerary entry | activity (`add_activity`) | event (`create_event` / `create_events`) |
 | Create a trip | `create_trip` with `destination`; AI is optional | `create_trip` with `name`, `place`, and dates only |
 | Plan checks | `get_trip_alerts` (includes maps) | `get_plan_warnings` (local overlaps and duplicates) |
-| Docs | SCHEMA.md, PITFALLS.md | [`ce/src/agent/schema.md`](ce/src/agent/schema.md) |
+| Docs | SCHEMA.md, PITFALLS.md | [`community-edition/src/agent/schema.md`](community-edition/src/agent/schema.md) |
 
 CE rejects hosted capability names, hosted argument names, and `gyd_` keys with an error naming the CE equivalent.
 

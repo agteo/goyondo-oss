@@ -1,0 +1,14 @@
+services:
+  community-edition:
+    build: .
+    ports:
+      - "8787:8787"
+    env_file:
+      - .env
+    environment:
+      CE_DATA_DIR: /data
+    volumes:
+      - community-edition-data:/data
+
+volumes:
+  community-edition-data:
